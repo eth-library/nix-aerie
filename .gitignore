@@ -1,0 +1,7 @@
+result
+result-*
+.direnv
+.idea
+*.qcow2
+.reports/
+.claude/agent-memory/
