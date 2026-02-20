@@ -1,0 +1,254 @@
+schemaVersion: "2.0.0"
+
+metadataTest:
+  user: ""
+  envVars:
+    - key: HOME
+      value: /home/dev
+    - key: NIX_PROFILES
+      value: /nix/var/nix/profiles/default
+    - key: PATH
+      value: /nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  workdir: /workspaces
+  cmd:
+    - "/nix/var/nix/profiles/default/bin/bash"
+    - "-l"
+
+fileExistenceTests:
+  # Nix profile symlink
+  - name: "Nix profile exists"
+    path: /nix/var/nix/profiles/default/bin/nix
+    shouldExist: true
+
+  # nix.conf
+  - name: "nix.conf exists"
+    path: /etc/nix/nix.conf
+    shouldExist: true
+
+  # User home directory
+  - name: "Home directory exists"
+    path: /home/dev
+    shouldExist: true
+    isExecutableBy: "owner"
+
+  # Workspaces directory
+  - name: "Workspaces directory exists"
+    path: /workspaces
+    shouldExist: true
+
+  # Bashrc
+  - name: "Bashrc exists"
+    path: /home/dev/.bashrc
+    shouldExist: true
+
+  # /etc/passwd
+  - name: "passwd file exists"
+    path: /etc/passwd
+    shouldExist: true
+
+  # /etc/group
+  - name: "group file exists"
+    path: /etc/group
+    shouldExist: true
+
+fileContentTests:
+  # nix.conf content
+  - name: "nix.conf has required settings"
+    path: /etc/nix/nix.conf
+    expectedContents:
+      - "experimental-features = nix-command flakes"
+      - "sandbox = false"
+      - "build-users-group ="
+
+  # /etc/passwd contains dev user
+  - name: "passwd has dev user"
+    path: /etc/passwd
+    expectedContents:
+      - "dev:x:1000:1000::/home/dev:/bin/bash"
+
+  # /etc/group contains dev group
+  - name: "group has dev group"
+    path: /etc/group
+    expectedContents:
+      - "dev:x:1000:"
+
+  # Bashrc sources Nix profile
+  - name: "bashrc sources nix profile"
+    path: /home/dev/.bashrc
+    expectedContents:
+      - "nix.sh"
+
+  # Bashrc hooks direnv
+  - name: "bashrc hooks direnv"
+    path: /home/dev/.bashrc
+    expectedContents:
+      - "direnv hook bash"
+
+commandTests:
+  # Core tools
+  - name: "nix is available"
+    command: "/nix/var/nix/profiles/default/bin/nix"
+    args: ["--version"]
+    expectedOutput: ["nix \\(Nix\\)"]
+
+  - name: "bash is available"
+    command: "/nix/var/nix/profiles/default/bin/bash"
+    args: ["--version"]
+    expectedOutput: ["GNU bash"]
+
+  - name: "git is available"
+    command: "/nix/var/nix/profiles/default/bin/git"
+    args: ["--version"]
+    expectedOutput: ["git version"]
+
+  - name: "direnv is available"
+    command: "/nix/var/nix/profiles/default/bin/direnv"
+    args: ["version"]
+    expectedOutput: ["[0-9]+\\.[0-9]+"]
+
+  - name: "curl is available"
+    command: "/nix/var/nix/profiles/default/bin/curl"
+    args: ["--version"]
+    expectedOutput: ["curl"]
+
+  - name: "jq is available"
+    command: "/nix/var/nix/profiles/default/bin/jq"
+    args: ["--version"]
+    expectedOutput: ["jq-"]
+
+  - name: "less is available"
+    command: "/nix/var/nix/profiles/default/bin/less"
+    args: ["--version"]
+    expectedOutput: ["less"]
+
+  - name: "tar is available"
+    command: "/nix/var/nix/profiles/default/bin/tar"
+    args: ["--version"]
+    expectedOutput: ["GNU tar"]
+
+  - name: "grep is available"
+    command: "/nix/var/nix/profiles/default/bin/grep"
+    args: ["--version"]
+    expectedOutput: ["GNU grep"]
+
+  - name: "sed is available"
+    command: "/nix/var/nix/profiles/default/bin/sed"
+    args: ["--version"]
+    expectedOutput: ["GNU sed"]
+
+  - name: "find is available"
+    command: "/nix/var/nix/profiles/default/bin/find"
+    args: ["--version"]
+    expectedOutput: ["GNU findutils"]
+
+  - name: "xz is available"
+    command: "/nix/var/nix/profiles/default/bin/xz"
+    args: ["--version"]
+    expectedOutput: ["xz"]
+
+  - name: "gzip is available"
+    command: "/nix/var/nix/profiles/default/bin/gzip"
+    args: ["--version"]
+    expectedOutput: ["gzip"]
+
+  - name: "coreutils (ls) is available"
+    command: "/nix/var/nix/profiles/default/bin/ls"
+    args: ["--version"]
+    expectedOutput: ["coreutils"]
+
+  # --- Pre-cached devShell tools (store-presence tests) ---
+
+  - name: "python3 is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/python3' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["Python 3"]
+
+  - name: "go is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/go' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    expectedOutput: ["go1\\."]
+
+  - name: "java is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -name java -path '*/bin/java' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["openjdk"]
+
+  - name: "kubectl is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/kubectl' \\( -type f -o -type l \\) 2>/dev/null | head -1) version --client"]
+    expectedOutput: ["Client Version"]
+
+  - name: "uv is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/uv' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["uv"]
+
+  - name: "gopls is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/gopls' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    expectedOutput: ["golang.org/x/tools/gopls"]
+
+  - name: "golangci-lint is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/golangci-lint' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["golangci-lint"]
+
+  - name: "maven is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/mvn' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["Apache Maven"]
+
+  - name: "helm is pre-cached in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/helm' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    expectedOutput: ["Version:"]
+
+  # --- nix develop smoke tests (creates temp flake, verifies shell activation) ---
+
+  - name: "nix develop works with python shell"
+    command: "bash"
+    args:
+      - "-lc"
+      - |
+        set -e
+        mkdir -p /tmp/test-py
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.python3 ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-py/flake.nix
+        cd /tmp/test-py
+        nix develop --command python3 --version
+    expectedOutput: ["Python 3"]
+
+  - name: "nix develop works with go shell"
+    command: "bash"
+    args:
+      - "-lc"
+      - |
+        set -e
+        mkdir -p /tmp/test-go
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.go ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-go/flake.nix
+        cd /tmp/test-go
+        nix develop --command go version
+    expectedOutput: ["go1\\."]
+
+  - name: "nix develop works with java shell"
+    command: "bash"
+    args:
+      - "-lc"
+      - |
+        set -e
+        mkdir -p /tmp/test-java
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.jdk25_headless ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-java/flake.nix
+        cd /tmp/test-java
+        nix develop --command java --version
+    expectedOutput: ["openjdk"]
+
+  - name: "nix develop works with kubectl shell"
+    command: "bash"
+    args:
+      - "-lc"
+      - |
+        set -e
+        mkdir -p /tmp/test-k8s
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.kubectl ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-k8s/flake.nix
+        cd /tmp/test-k8s
+        nix develop --command kubectl version --client
+    expectedOutput: ["Client Version"]
