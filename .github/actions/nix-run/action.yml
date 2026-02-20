@@ -1,0 +1,41 @@
+name: Run in Nix devShell
+description: Run a command inside a Nix devShell from the nix-aerie image
+
+inputs:
+  command:
+    description: Command to run inside nix develop
+    required: true
+  shell:
+    description: "devShell to use (e.g. python, go, java, k8s). Leave empty to use the repo's default devShell."
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Transfer Nix store ownership to root
+      # The image's /nix store is owned by user 'dev' (uid 1000)
+      # for devcontainer compatibility. GitHub Actions container jobs run as root.
+      # Without this chown, Nix operations fail with permission errors (EPERM).
+      # Security note: no privilege escalation — the CI runner is already root.
+      run: |
+        if [ ! -d /nix ]; then
+          echo "::error::/nix directory not found — is this a nix-aerie image?"
+          exit 1
+        fi
+        chown -R root:root /nix
+      shell: bash
+
+    - name: Run command in Nix devShell
+      env:
+        SHELL_INPUT: ${{ inputs.shell }}
+        COMMAND_INPUT: ${{ inputs.command }}
+      run: |
+        if [ -n "$SHELL_INPUT" ]; then
+          echo "Running: nix develop .#$SHELL_INPUT --command -- $COMMAND_INPUT"
+          nix develop ".#$SHELL_INPUT" --command -- $COMMAND_INPUT
+        else
+          echo "Running: nix develop --command -- $COMMAND_INPUT"
+          nix develop --command -- $COMMAND_INPUT
+        fi
+      shell: bash
