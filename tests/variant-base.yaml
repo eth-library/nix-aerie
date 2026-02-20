@@ -16,6 +16,11 @@ commandTests:
     args: ["version"]
     expectedOutput: ["[0-9]+\\.[0-9]+"]
 
+  - name: "apt-get is available (Ubuntu base)"
+    command: "bash"
+    args: ["-lc", "apt-get --version"]
+    expectedOutput: ["apt"]
+
   # Negative: no shell-specific tools
   - name: "base does NOT contain python3"
     command: "bash"

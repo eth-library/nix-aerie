@@ -156,6 +156,11 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["coreutils"]
 
+  - name: "apt-get is available (Ubuntu base)"
+    command: "bash"
+    args: ["-lc", "apt-get --version"]
+    expectedOutput: ["apt"]
+
   # --- Pre-cached devShell tools (store-presence tests) ---
 
   - name: "python3 is pre-cached in store"
