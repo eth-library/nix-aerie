@@ -109,8 +109,7 @@
         wolfiDigests = {
           "x86_64-linux" = {
             imageDigest = "sha256:a557cd88f9807c3632d2f7978f57b6dcab4ef2358b88aa7b0ae3d2706a44860e";
-            # TODO: compute on x86_64-linux
-            sha256 = lib.fakeHash;
+            sha256 = "sha256-9Ly0cveprDBYb3//yl0zrtwuuF/l7cOUTz1QqNzYSC0=";
           };
           "aarch64-linux" = {
             imageDigest = "sha256:bd736af9ca3fa53ba61622dd50481bd8409e7e8ce57e59fd38e985b7673becde";
