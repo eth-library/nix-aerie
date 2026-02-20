@@ -68,6 +68,7 @@
           gnused
           findutils
           xz
+          cacert
         ];
 
         userEnv = pkgs.buildEnv {
@@ -182,6 +183,9 @@
             "PATH=/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             "NIX_PROFILES=/nix/var/nix/profiles/default"
             "HOME=/home/dev"
+            "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
+            "USER=dev"
+            "LANG=C.UTF-8"
           ];
           WorkingDir = "/workspaces";
           Cmd = [ "/nix/var/nix/profiles/default/bin/bash" "-l" ];
