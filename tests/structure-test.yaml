@@ -164,6 +164,18 @@ commandTests:
     args: ["-lc", "apt-get --version"]
     expectedOutput: ["apt"]
 
+  # --- Nix profile directories: ownership for single-user mode ---
+
+  - name: "/nix/var/nix/profiles/per-user/dev exists and is owned by dev"
+    command: "stat"
+    args: ["-c", "%U:%G", "/nix/var/nix/profiles/per-user/dev"]
+    expectedOutput: ["dev:dev"]
+
+  - name: "/nix/var/nix/gcroots/per-user/dev exists and is owned by dev"
+    command: "stat"
+    args: ["-c", "%U:%G", "/nix/var/nix/gcroots/per-user/dev"]
+    expectedOutput: ["dev:dev"]
+
   # --- Home Manager dotfiles: ownership + store path resolution ---
 
   - name: "/home/dev owned by dev user"
