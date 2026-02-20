@@ -189,6 +189,13 @@
           ];
           WorkingDir = "/workspaces";
           Cmd = [ "/nix/var/nix/profiles/default/bin/bash" "-l" ];
+          Labels = {
+            "org.opencontainers.image.title" = "nix-aerie";
+            "org.opencontainers.image.description" = "Pre-baked Nix container image by ETH Library Zurich";
+            "org.opencontainers.image.source" = "https://github.com/eth-library/nix-aerie";
+            "org.opencontainers.image.licenses" = "Apache-2.0";
+            "org.opencontainers.image.vendor" = "ETH Library Zurich";
+          };
         };
 
         # --- Variant builder ---
