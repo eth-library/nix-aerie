@@ -126,6 +126,7 @@
         # Layer: system files (/etc/passwd, /etc/group, /home/dev, /workspaces)
         systemLayer = n2c.buildLayer {
           copyToRoot = [ systemFiles ];
+          metadata.created_by = "nix-aerie: system files (/etc/passwd, /home/dev, /workspaces)";
           perms = [
             {
               path = systemFiles;
@@ -152,16 +153,19 @@
         # Layer: user packages (nix, bash, git, direnv, etc.)
         userPkgsLayer = n2c.buildLayer {
           deps = [ userEnv ];
+          metadata.created_by = "nix-aerie: user packages (nix, bash, git, direnv, coreutils)";
         };
 
         # Layer: Nix profile (symlink tree)
         nixProfileLayer = n2c.buildLayer {
           copyToRoot = [ nixProfile ];
+          metadata.created_by = "nix-aerie: nix profile (/nix/var/nix/profiles/default)";
         };
 
         # Layer: dotfiles (.bashrc, direnv config, nix.conf)
         dotfilesLayer = n2c.buildLayer {
           copyToRoot = [ homeManagerDotfiles nixConf ];
+          metadata.created_by = "nix-aerie: dotfiles (.bashrc, direnv, nix.conf)";
         };
 
         baseLayers = [
@@ -172,10 +176,21 @@
         ];
 
         # --- Shell-specific layers ---
-        pythonLayer = n2c.buildLayer { deps = [ pythonShell ]; };
-        goLayer = n2c.buildLayer { deps = [ goShell ]; };
-        javaLayer = n2c.buildLayer { deps = [ javaShell ]; };
-        k8sLayer = n2c.buildLayer { deps = [ k8sShell ]; };
+
+        # allShellsLayer: union of all shell closures minus userPkgsLayer.
+        # Used only by :full — one layer instead of per-shell deduped layers.
+        allShellsLayer = n2c.buildLayer {
+          deps = [ pythonShell goShell javaShell k8sShell ];
+          layers = [ userPkgsLayer ];
+          metadata.created_by = "nix-aerie: all devShell closures (python, go, java, k8s)";
+        };
+
+        # Lean shell layers (for individual variants) — exclude only userPkgsLayer.
+        # Each carries its full closure minus base packages, nothing from other shells.
+        pythonLayer = n2c.buildLayer { deps = [ pythonShell ]; layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: python devShell (python312, uv)"; };
+        goLayer     = n2c.buildLayer { deps = [ goShell ];     layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: go devShell (go, gopls, golangci-lint)"; };
+        javaLayer   = n2c.buildLayer { deps = [ javaShell ];   layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: java devShell (jdk25, maven)"; };
+        k8sLayer    = n2c.buildLayer { deps = [ k8sShell ];    layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: k8s devShell (kubectl, helm)"; };
 
         # --- Image configuration (no User!) ---
         imageConfig = {
@@ -214,7 +229,7 @@
         packages = {
           default = mkVariant {
             name = "nix-aerie";
-            extraLayers = [ pythonLayer goLayer javaLayer k8sLayer ];
+            extraLayers = [ allShellsLayer ];
           };
           base = mkVariant {
             name = "nix-aerie-base";
