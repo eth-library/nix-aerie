@@ -21,6 +21,30 @@ commandTests:
     args: ["-lc", "apt-get --version"]
     expectedOutput: ["apt"]
 
+  # --- Home Manager dotfiles: ownership + store path resolution ---
+
+  - name: "/home/dev owned by dev user"
+    command: "stat"
+    args: ["-c", "%U:%G", "/home/dev"]
+    expectedOutput: ["dev:dev"]
+
+  - name: "/home/dev/.bashrc owned by dev user"
+    command: "stat"
+    args: ["-c", "%U:%G", "/home/dev/.bashrc"]
+    expectedOutput: ["dev:dev"]
+
+  - name: ".profile sources without missing store paths"
+    command: "bash"
+    args: ["-c", ". /home/dev/.profile 2>&1 && echo ok"]
+    expectedOutput: ["ok"]
+    excludedOutput: ["No such file"]
+
+  - name: "login shell works (VS Code Codespaces compatibility)"
+    command: "bash"
+    args: ["-l", "-c", "echo probe-ok"]
+    expectedOutput: ["probe-ok"]
+    excludedOutput: ["No such file or directory"]
+
   # Negative: no shell-specific tools
   - name: "base does NOT contain python3"
     command: "bash"
