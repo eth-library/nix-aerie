@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Flake validation
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+
+      - name: nix flake check
+        run: nix flake check --system x86_64-linux
+
+  build-test:
+    name: Build and test (${{ matrix.variant }})
+    needs: check
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # MVP variants only — go, java, k8s deferred to post-MVP
+        include:
+          - variant: base
+            image_name: nix-aerie-base:latest
+            test_config: tests/variant-base.yaml
+            size_max_mb: 1200
+          - variant: python
+            image_name: nix-aerie-python:latest
+            test_config: tests/variant-python.yaml
+            size_max_mb: 1800
+          - variant: default
+            image_name: nix-aerie:latest
+            test_config: tests/structure-test.yaml
+            size_max_mb: 3600
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+
+      # Uses -tar targets for consistent :latest tags (see .reports/ci-workflow-review.md §5)
+      - name: Build and load image
+        run: |
+          nix build .#${{ matrix.variant }}-tar --print-build-logs
+          docker load < result
+
+      # Install container-structure-test (v1.22.1, SHA256 verified)
+      - name: Install container-structure-test
+        run: |
+          CST_VERSION="1.22.1"
+          # SHA256 from dev/flake.nix SRI hash, converted to hex
+          CST_SHA256="fa35e89512a8978585f76cf41397956d2e3a30c62c2ad3fb857b1597074d14ca"
+          curl -fsSL \
+            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v${CST_VERSION}/container-structure-test-linux-amd64" \
+            -o /usr/local/bin/container-structure-test
+          echo "${CST_SHA256}  /usr/local/bin/container-structure-test" | sha256sum -c
+          chmod +x /usr/local/bin/container-structure-test
+
+      # Each variant runs its own structure test file
+      - name: Run structure tests
+        run: |
+          container-structure-test test \
+            --image ${{ matrix.image_name }} \
+            --config ${{ matrix.test_config }}
+
+      # CI reuse pattern: root user + chown + nix develop (default variant only)
+      - name: "Smoke: CI reuse pattern (root + chown + nix develop)"
+        if: matrix.variant == 'default'
+        env:
+          IMAGE_NAME: ${{ matrix.image_name }}
+        run: |
+          docker run --rm --user root "$IMAGE_NAME" bash -c '
+            set -e
+            chown -R root:root /nix
+            mkdir -p /tmp/test-ci
+            cat > /tmp/test-ci/flake.nix << "FLAKE"
+          {
+            inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+            outputs = { nixpkgs, ... }:
+              let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+              in { devShells.x86_64-linux.default = pkgs.mkShell {}; };
+          }
+          FLAKE
+            cd /tmp/test-ci
+            nix develop --command nix --version
+          '
+
+      # Image size guardrail — catch unexpected bloat
+      - name: Check image size
+        env:
+          IMAGE_NAME: ${{ matrix.image_name }}
+          MAX_MB: ${{ matrix.size_max_mb }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          MAX_BYTES=$(( MAX_MB * 1024 * 1024 ))
+          ACTUAL=$(docker inspect --format='{{.Size}}' "$IMAGE_NAME")
+          if [ "$ACTUAL" -gt "$MAX_BYTES" ]; then
+            echo "::error::FAIL: :${VARIANT} is $(numfmt --to=iec "$ACTUAL") — exceeds $(numfmt --to=iec "$MAX_BYTES") threshold"
+            exit 1
+          fi
+          echo "OK: :${VARIANT} is $(numfmt --to=iec "$ACTUAL") (max $(numfmt --to=iec "$MAX_BYTES"))"
+
+  publish:
+    name: Publish (${{ matrix.variant }})
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: base
+            image_name: nix-aerie-base:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-base
+          - variant: python
+            image_name: nix-aerie-python:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-python
+          - variant: default
+            image_name: nix-aerie:latest
+            registry_image: ghcr.io/eth-library/nix-aerie
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+
+      - name: Enable Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Rebuild uses Nix cache — only docker load + push cost time
+      - name: Build and load image
+        run: |
+          nix build .#${{ matrix.variant }}-tar --print-build-logs
+          docker load < result
+
+      - name: Tag and push
+        env:
+          LOCAL: ${{ matrix.image_name }}
+          REMOTE: ${{ matrix.registry_image }}
+        run: |
+          docker tag "${LOCAL}" "${REMOTE}:latest"
+          docker push "${REMOTE}:latest"
