@@ -1,0 +1,33 @@
+schemaVersion: "2.0.0"
+
+commandTests:
+  - name: "nix is available"
+    command: "/nix/var/nix/profiles/default/bin/nix"
+    args: ["--version"]
+    expectedOutput: ["nix \\(Nix\\)"]
+
+  - name: "java is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -name java -path '*/bin/java' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["openjdk"]
+
+  - name: "maven is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/mvn' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["Apache Maven"]
+
+  # Negative: no other shell tools
+  - name: "java variant does NOT contain python3"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/python3' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "java variant does NOT contain go"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/go' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "java variant does NOT contain kubectl"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/kubectl' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0

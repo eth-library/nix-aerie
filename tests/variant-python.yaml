@@ -1,0 +1,33 @@
+schemaVersion: "2.0.0"
+
+commandTests:
+  - name: "nix is available"
+    command: "/nix/var/nix/profiles/default/bin/nix"
+    args: ["--version"]
+    expectedOutput: ["nix \\(Nix\\)"]
+
+  - name: "python3 is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/python3' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["Python 3"]
+
+  - name: "uv is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/uv' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["uv"]
+
+  # Negative: no other shell tools
+  - name: "python variant does NOT contain go"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/go' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "python variant does NOT contain java"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -path '*/bin/java' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "python variant does NOT contain kubectl"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/kubectl' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0

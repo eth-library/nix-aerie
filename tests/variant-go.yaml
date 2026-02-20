@@ -1,0 +1,38 @@
+schemaVersion: "2.0.0"
+
+commandTests:
+  - name: "nix is available"
+    command: "/nix/var/nix/profiles/default/bin/nix"
+    args: ["--version"]
+    expectedOutput: ["nix \\(Nix\\)"]
+
+  - name: "go is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/go' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    expectedOutput: ["go1\\."]
+
+  - name: "gopls is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/gopls' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    expectedOutput: ["golang.org/x/tools/gopls"]
+
+  - name: "golangci-lint is present in store"
+    command: "bash"
+    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/golangci-lint' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    expectedOutput: ["golangci-lint"]
+
+  # Negative: no other shell tools
+  - name: "go variant does NOT contain python3"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/python3' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "go variant does NOT contain java"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -path '*/bin/java' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
+
+  - name: "go variant does NOT contain kubectl"
+    command: "bash"
+    args: ["-lc", "! find /nix/store -maxdepth 3 -path '*/bin/kubectl' \\( -type f -o -type l \\) 2>/dev/null | grep -q ."]
+    exitCode: 0
