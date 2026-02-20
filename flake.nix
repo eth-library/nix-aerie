@@ -263,6 +263,82 @@
           java = javaShell;
           k8s = k8sShell;
         };
+
+        checks = {
+          check-python-shell = pkgs.runCommand "check-python-shell" {
+            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
+          } ''
+            echo "Checking pythonShell for python3..."
+            find ${pythonShell.inputDerivation} -path '*/bin/python3' \( -type f -o -type l \) | grep -q .
+            echo "Checking pythonShell for uv..."
+            find ${pythonShell.inputDerivation} -path '*/bin/uv' \( -type f -o -type l \) | grep -q .
+            echo "All python shell checks passed"
+            touch $out
+          '';
+
+          check-go-shell = pkgs.runCommand "check-go-shell" {
+            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
+          } ''
+            echo "Checking goShell for go..."
+            find ${goShell.inputDerivation} -path '*/bin/go' \( -type f -o -type l \) | grep -q .
+            echo "Checking goShell for gopls..."
+            find ${goShell.inputDerivation} -path '*/bin/gopls' \( -type f -o -type l \) | grep -q .
+            echo "Checking goShell for golangci-lint..."
+            find ${goShell.inputDerivation} -path '*/bin/golangci-lint' \( -type f -o -type l \) | grep -q .
+            echo "All go shell checks passed"
+            touch $out
+          '';
+
+          check-java-shell = pkgs.runCommand "check-java-shell" {
+            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
+          } ''
+            echo "Checking javaShell for java (depth 5 — no maxdepth!)..."
+            find ${javaShell.inputDerivation} -path '*/bin/java' \( -type f -o -type l \) | grep -q .
+            echo "Checking javaShell for mvn..."
+            find ${javaShell.inputDerivation} -path '*/bin/mvn' \( -type f -o -type l \) | grep -q .
+            echo "All java shell checks passed"
+            touch $out
+          '';
+
+          check-k8s-shell = pkgs.runCommand "check-k8s-shell" {
+            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
+          } ''
+            echo "Checking k8sShell for kubectl..."
+            find ${k8sShell.inputDerivation} -path '*/bin/kubectl' \( -type f -o -type l \) | grep -q .
+            echo "Checking k8sShell for helm..."
+            find ${k8sShell.inputDerivation} -path '*/bin/helm' \( -type f -o -type l \) | grep -q .
+            echo "All k8s shell checks passed"
+            touch $out
+          '';
+
+          check-base-tools = pkgs.runCommand "check-base-tools" {
+            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
+          } ''
+            echo "Checking userEnv for all 15 expected tool binaries..."
+            for bin in nix git bash direnv curl jq less tar grep sed find xz gzip ls; do
+              echo "  checking $bin..."
+              find ${userEnv} -path "*/bin/$bin" \( -type f -o -type l \) | grep -q .
+            done
+            echo "  checking cacert (SSL CA bundle)..."
+            find ${userEnv} -path "*/etc/ssl/certs/ca-bundle.crt" | grep -q .
+            echo "All base tool checks passed"
+            touch $out
+          '';
+
+          check-config-files = pkgs.runCommand "check-config-files" {
+            nativeBuildInputs = [ pkgs.gnugrep ];
+          } ''
+            echo "Checking homeManagerDotfiles for .bashrc content..."
+            grep -q "nix.sh" ${homeManagerDotfiles}/home/dev/.bashrc
+            grep -q "direnv hook bash" ${homeManagerDotfiles}/home/dev/.bashrc
+            echo "Checking nixConf for required nix.conf lines..."
+            grep -q "experimental-features = nix-command flakes" ${nixConf}/etc/nix/nix.conf
+            grep -q "sandbox = false" ${nixConf}/etc/nix/nix.conf
+            grep -q "build-users-group =" ${nixConf}/etc/nix/nix.conf
+            echo "All config file checks passed"
+            touch $out
+          '';
+        };
       }
     );
 }
