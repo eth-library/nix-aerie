@@ -164,9 +164,24 @@
         };
 
         # Layer: dotfiles (.bashrc, direnv config, nix.conf)
+        # deps ensures all Nix store paths referenced by Home Manager generated scripts
+        # (e.g. hm-session-vars.sh, bash-completion) exist in the image.
+        # Without deps, `bash -l` fails on missing store paths and VS Code's
+        # loginInteractiveShell probe breaks → terminal never opens.
         dotfilesLayer = n2c.buildLayer {
           copyToRoot = [ homeManagerDotfiles nixConf ];
+          deps = [ homeManagerDotfiles ];
+          layers = [ userPkgsLayer ];
           metadata.created_by = "nix-aerie: dotfiles (.bashrc, direnv, nix.conf)";
+          perms = [
+            {
+              path = homeManagerDotfiles;
+              regex = "home/dev";
+              mode = "0755";
+              uid = 1000;
+              gid = 1000;
+            }
+          ];
         };
 
         baseLayers = [
