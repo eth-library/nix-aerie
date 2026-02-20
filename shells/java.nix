@@ -1,7 +1,7 @@
 { pkgs }:
 pkgs.mkShell {
-  packages = with pkgs; [
-    jdk25_headless
-    maven
+  packages = [
+    pkgs.jdk25_headless
+    (pkgs.maven.override { jdk_headless = pkgs.jdk25_headless; })
   ];
 }
