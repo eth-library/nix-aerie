@@ -24,6 +24,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         n2c = nix2container.packages.${system}.nix2container;
+        skopeo-nix2container = nix2container.packages.${system}.skopeo-nix2container;
         lib = pkgs.lib;
 
         # --- Shell definitions (plain Nix functions, not flakes) ---
@@ -108,6 +109,7 @@
         wolfiDigests = {
           "x86_64-linux" = {
             imageDigest = "sha256:a557cd88f9807c3632d2f7978f57b6dcab4ef2358b88aa7b0ae3d2706a44860e";
+            # TODO: compute on x86_64-linux
             sha256 = lib.fakeHash;
           };
           "aarch64-linux" = {
@@ -225,31 +227,34 @@
             nixGid = 1000;
           };
 
+        # --- Docker-archive builder (produces tar for `docker load`) ---
+        # proot: skopeo hardcodes /var/tmp for blob temp files (absent in sandbox)
+        mkDockerArchive = { name, tag ? "latest", image }:
+          pkgs.runCommand "${name}-docker-archive.tar" {
+            nativeBuildInputs = [ skopeo-nix2container pkgs.proot ];
+          } ''
+            proot -b $TMPDIR:/var/tmp \
+              skopeo --insecure-policy copy nix:${image} docker-archive:$out:${name}:${tag}
+          '';
+
       in {
-        packages = {
-          default = mkVariant {
-            name = "nix-aerie";
-            extraLayers = [ allShellsLayer ];
+        packages = let
+          images = {
+            default = mkVariant { name = "nix-aerie"; extraLayers = [ allShellsLayer ]; };
+            base    = mkVariant { name = "nix-aerie-base"; };
+            python  = mkVariant { name = "nix-aerie-python"; extraLayers = [ pythonLayer ]; };
+            go      = mkVariant { name = "nix-aerie-go"; extraLayers = [ goLayer ]; };
+            java    = mkVariant { name = "nix-aerie-java"; extraLayers = [ javaLayer ]; };
+            k8s     = mkVariant { name = "nix-aerie-k8s"; extraLayers = [ k8sLayer ]; };
           };
-          base = mkVariant {
-            name = "nix-aerie-base";
-          };
-          python = mkVariant {
-            name = "nix-aerie-python";
-            extraLayers = [ pythonLayer ];
-          };
-          go = mkVariant {
-            name = "nix-aerie-go";
-            extraLayers = [ goLayer ];
-          };
-          java = mkVariant {
-            name = "nix-aerie-java";
-            extraLayers = [ javaLayer ];
-          };
-          k8s = mkVariant {
-            name = "nix-aerie-k8s";
-            extraLayers = [ k8sLayer ];
-          };
+        in images // {
+          # Docker-archive tars (for `docker load < result`)
+          default-tar = mkDockerArchive { name = "nix-aerie"; image = images.default; };
+          base-tar    = mkDockerArchive { name = "nix-aerie-base"; image = images.base; };
+          python-tar  = mkDockerArchive { name = "nix-aerie-python"; image = images.python; };
+          go-tar      = mkDockerArchive { name = "nix-aerie-go"; image = images.go; };
+          java-tar    = mkDockerArchive { name = "nix-aerie-java"; image = images.java; };
+          k8s-tar     = mkDockerArchive { name = "nix-aerie-k8s"; image = images.k8s; };
         };
 
         devShells = {
