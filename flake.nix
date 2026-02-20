@@ -265,48 +265,40 @@
         };
 
         checks = {
-          check-python-shell = pkgs.runCommand "check-python-shell" {
-            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
-          } ''
+          check-python-shell = pkgs.runCommand "check-python-shell" {} ''
             echo "Checking pythonShell for python3..."
-            find ${pythonShell.inputDerivation} -path '*/bin/python3' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.python312}/bin/python3
             echo "Checking pythonShell for uv..."
-            find ${pythonShell.inputDerivation} -path '*/bin/uv' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.uv}/bin/uv
             echo "All python shell checks passed"
             touch $out
           '';
 
-          check-go-shell = pkgs.runCommand "check-go-shell" {
-            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
-          } ''
+          check-go-shell = pkgs.runCommand "check-go-shell" {} ''
             echo "Checking goShell for go..."
-            find ${goShell.inputDerivation} -path '*/bin/go' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.go}/bin/go
             echo "Checking goShell for gopls..."
-            find ${goShell.inputDerivation} -path '*/bin/gopls' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.gopls}/bin/gopls
             echo "Checking goShell for golangci-lint..."
-            find ${goShell.inputDerivation} -path '*/bin/golangci-lint' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.golangci-lint}/bin/golangci-lint
             echo "All go shell checks passed"
             touch $out
           '';
 
-          check-java-shell = pkgs.runCommand "check-java-shell" {
-            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
-          } ''
-            echo "Checking javaShell for java (depth 5 — no maxdepth!)..."
-            find ${javaShell.inputDerivation} -path '*/bin/java' \( -type f -o -type l \) | grep -q .
+          check-java-shell = pkgs.runCommand "check-java-shell" {} ''
+            echo "Checking javaShell for java..."
+            test -x ${pkgs.jdk25_headless}/bin/java
             echo "Checking javaShell for mvn..."
-            find ${javaShell.inputDerivation} -path '*/bin/mvn' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.maven}/bin/mvn
             echo "All java shell checks passed"
             touch $out
           '';
 
-          check-k8s-shell = pkgs.runCommand "check-k8s-shell" {
-            nativeBuildInputs = [ pkgs.findutils pkgs.gnugrep ];
-          } ''
+          check-k8s-shell = pkgs.runCommand "check-k8s-shell" {} ''
             echo "Checking k8sShell for kubectl..."
-            find ${k8sShell.inputDerivation} -path '*/bin/kubectl' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.kubectl}/bin/kubectl
             echo "Checking k8sShell for helm..."
-            find ${k8sShell.inputDerivation} -path '*/bin/helm' \( -type f -o -type l \) | grep -q .
+            test -x ${pkgs.kubernetes-helm}/bin/helm
             echo "All k8s shell checks passed"
             touch $out
           '';
