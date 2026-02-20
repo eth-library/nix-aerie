@@ -55,7 +55,7 @@
         userPackages = with pkgs; [
           bash
           coreutils
-          git
+          gitMinimal
           nix
           direnv
           nix-direnv
