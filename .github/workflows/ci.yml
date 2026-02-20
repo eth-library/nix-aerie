@@ -3,7 +3,6 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -127,7 +126,6 @@ jobs:
   publish:
     name: Publish (${{ matrix.variant }})
     needs: build-test
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
