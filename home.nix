@@ -1,23 +1,24 @@
-{ pkgs }:
-let
-  bashrc = pkgs.writeText "bashrc" ''
-    # Source Nix profile
-    if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then
-      . /nix/var/nix/profiles/default/etc/profile.d/nix.sh
-    fi
+{ pkgs, ... }:
 
-    # Enable direnv
-    eval "$(direnv hook bash)"
-  '';
+{
+  home.username = "dev";
+  home.homeDirectory = "/home/dev";
+  home.stateVersion = "25.11";
 
-  nixConf = pkgs.writeText "nix.conf" ''
-    experimental-features = nix-command flakes
-    sandbox = false
-  '';
-in
-pkgs.runCommand "dotfiles" {} ''
-  mkdir -p $out/home/dev
-  mkdir -p $out/etc/nix
-  cp ${bashrc} $out/home/dev/.bashrc
-  cp ${nixConf} $out/etc/nix/nix.conf
-''
+  programs.bash = {
+    enable = true;
+    initExtra = ''
+      # Source Nix profile — sets NIX_SSL_CERT_FILE and other vars.
+      # PATH duplication with container config is harmless and provides
+      # a safety net if the container's PATH is modified at runtime.
+      if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix.sh ]; then
+        . /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+      fi
+    '';
+  };
+
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
+}

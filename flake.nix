@@ -1,5 +1,5 @@
 {
-  description = "nix-aerie: Pre-baked OCI images with Nix + direnv for ETH Library Zurich";
+  description = "nix-aerie: Pre-baked OCI images with Nix + direnv by ETH Library Zurich";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -9,10 +9,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils.url = "github:numtide/flake-utils/11707dc2f618dd54ca8739b309ec4fc024de578b";
+
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nix2container, flake-utils }:
+  outputs = { self, nixpkgs, nix2container, flake-utils, home-manager }:
+    # x86_64-linux: Codespaces + GitHub Actions runners (production)
+    # aarch64-linux: local testing on Apple Silicon Macs via nix-darwin linux-builder
     flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -25,8 +32,24 @@
         javaShell = import ./shells/java.nix { inherit pkgs; };
         k8sShell = import ./shells/k8s.nix { inherit pkgs; };
 
-        # --- Dotfiles (manual derivation)
-        dotfiles = import ./home.nix { inherit pkgs; };
+        # --- Home Manager configuration ---
+        homeManagerConfig = home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          modules = [ ./home.nix ];
+        };
+
+        # Wrap Home Manager-generated home-files to place under /home/dev
+        homeManagerDotfiles = pkgs.runCommand "home-manager-dotfiles" {} ''
+          mkdir -p $out/home/dev
+          cp -rLT ${homeManagerConfig.activationPackage}/home-files $out/home/dev/
+        '';
+
+        # System-level nix.conf (not managed by Home Manager — it's a system path)
+        nixConf = pkgs.writeTextDir "etc/nix/nix.conf" ''
+          build-users-group =
+          experimental-features = nix-command flakes
+          sandbox = false
+        '';
 
         # --- User environment ---
         userPackages = with pkgs; [
@@ -135,9 +158,9 @@
           copyToRoot = [ nixProfile ];
         };
 
-        # Layer: dotfiles (.bashrc, nix.conf)
+        # Layer: dotfiles (.bashrc, direnv config, nix.conf)
         dotfilesLayer = n2c.buildLayer {
-          copyToRoot = [ dotfiles ];
+          copyToRoot = [ homeManagerDotfiles nixConf ];
         };
 
         baseLayers = [
