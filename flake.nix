@@ -100,9 +100,15 @@
 
         # --- Nix profile symlink ---
         nixProfile = pkgs.runCommand "nix-profile" {} ''
-          mkdir -p $out/nix/var/nix/profiles
+          mkdir -p $out/nix/var/nix/profiles/per-user/dev
           mkdir -p $out/nix/var/nix/gcroots/profiles
+          mkdir -p $out/nix/var/nix/gcroots/per-user/dev
           ln -s ${userEnv} $out/nix/var/nix/profiles/default
+          # .keep ensures empty dirs survive nix2container tar layering —
+          # initializeNixDatabase adds a later layer with /nix/var/nix/profiles/
+          # but overlayfs merges per-user/dev from this lower layer
+          touch $out/nix/var/nix/profiles/per-user/dev/.keep
+          touch $out/nix/var/nix/gcroots/per-user/dev/.keep
         '';
 
         # --- Ubuntu 24.04 (Noble) base image (per-architecture digests) ---
@@ -162,6 +168,15 @@
         nixProfileLayer = n2c.buildLayer {
           copyToRoot = [ nixProfile ];
           metadata.created_by = "nix-aerie: nix profile (/nix/var/nix/profiles/default)";
+          perms = [
+            {
+              path = nixProfile;
+              regex = "nix/var/nix";
+              mode = "0755";
+              uid = 1000;
+              gid = 1000;
+            }
+          ];
         };
 
         # Layer: dotfiles (.bashrc, direnv config, nix.conf)
