@@ -320,7 +320,7 @@
               find ${userEnv} -path "*/bin/$bin" \( -type f -o -type l \) | grep -q .
             done
             echo "  checking cacert (SSL CA bundle)..."
-            find ${userEnv} -path "*/etc/ssl/certs/ca-bundle.crt" | grep -q .
+            test -e ${userEnv}/etc/ssl/certs/ca-bundle.crt
             echo "All base tool checks passed"
             touch $out
           '';
