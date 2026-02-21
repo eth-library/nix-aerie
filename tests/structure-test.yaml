@@ -95,6 +95,11 @@ commandTests:
     args: ["-lc", "ldd --version 2>&1 | head -1"]
     expectedOutput: ["GLIBC 2\\.(2[8-9]|[3-9][0-9])"]
 
+  - name: "libstdc++.so.6 exists (VS Code Server requirement)"
+    command: "bash"
+    args: ["-lc", "find /usr -name 'libstdc++.so.6' -type f 2>/dev/null | head -1 | xargs test -f && echo found"]
+    expectedOutput: ["found"]
+
   # --- Core tools ---
 
   - name: "nix is available"
