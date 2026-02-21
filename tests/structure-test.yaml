@@ -110,6 +110,11 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["bash"]
 
+  - name: "/bin/sh exists (overrideCommand requirement)"
+    command: "/bin/sh"
+    args: ["-c", "echo sh-ok"]
+    expectedOutput: ["sh-ok"]
+
   # --- Core tools ---
 
   - name: "nix is available"
