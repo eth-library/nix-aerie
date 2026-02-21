@@ -88,7 +88,15 @@ fileContentTests:
       - "direnv hook bash"
 
 commandTests:
-  # Core tools
+  # --- VS Code Server requirements ---
+
+  - name: "glibc >= 2.28 (VS Code Server requirement)"
+    command: "bash"
+    args: ["-lc", "ldd --version 2>&1 | head -1"]
+    expectedOutput: ["GLIBC 2\\.(2[8-9]|[3-9][0-9])"]
+
+  # --- Core tools ---
+
   - name: "nix is available"
     command: "/nix/var/nix/profiles/default/bin/nix"
     args: ["--version"]
