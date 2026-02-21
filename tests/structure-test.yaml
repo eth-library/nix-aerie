@@ -105,6 +105,11 @@ commandTests:
     args: ["-lc", "find /usr /lib -name 'libgcc_s.so.1' \\( -type f -o -type l \\) 2>/dev/null | head -1 | xargs test -e && echo found"]
     expectedOutput: ["found"]
 
+  - name: "/bin/bash exists (VS Code Server requirement)"
+    command: "/bin/bash"
+    args: ["--version"]
+    expectedOutput: ["bash"]
+
   # --- Core tools ---
 
   - name: "nix is available"
