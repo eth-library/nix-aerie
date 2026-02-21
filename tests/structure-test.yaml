@@ -120,6 +120,11 @@ commandTests:
     args: ["-lc", "which sleep"]
     expectedOutput: ["/"]
 
+  - name: "ca-certificates present (SSL requirement)"
+    command: "bash"
+    args: ["-lc", "test -f /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt && echo found"]
+    expectedOutput: ["found"]
+
   # --- Core tools ---
 
   - name: "nix is available"
