@@ -130,6 +130,11 @@ commandTests:
     args: ["-c", "touch /home/dev/.write-test && rm /home/dev/.write-test && echo writable"]
     expectedOutput: ["writable"]
 
+  - name: "/tmp exists with mode 1777"
+    command: "stat"
+    args: ["-c", "%a", "/tmp"]
+    expectedOutput: ["1777"]
+
   # --- Core tools ---
 
   - name: "nix is available"
