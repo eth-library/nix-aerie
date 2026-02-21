@@ -115,6 +115,11 @@ commandTests:
     args: ["-c", "echo sh-ok"]
     expectedOutput: ["sh-ok"]
 
+  - name: "sleep exists (overrideCommand keep-alive)"
+    command: "bash"
+    args: ["-lc", "which sleep"]
+    expectedOutput: ["/"]
+
   # --- Core tools ---
 
   - name: "nix is available"
