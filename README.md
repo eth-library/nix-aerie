@@ -1,16 +1,16 @@
 # nix-aerie
 
-Plug-and-play container image for devcontainers, CI pipelines, and coding agent sandboxes — ships [Nix](https://nixos.org/), [direnv](https://direnv.net/), and pre-cached development shells on a minimal [Wolfi](https://wolfi.dev/) base.
+Plug-and-play container image for devcontainers, CI pipelines, and coding agent sandboxes — ships [Nix](https://nixos.org/), [direnv](https://direnv.net/), and pre-cached development shells on an [Ubuntu 24.04](https://ubuntu.com/) base.
 
 ## How It Works
 
-### Distroless base
+### Ubuntu base
 
-Instead of starting from a full Linux distribution, the image uses a minimal [Wolfi](https://wolfi.dev/) base (~15 MB, by Chainguard) that carries almost nothing — just the filesystem layout (`/lib64`, `/usr/bin/env`) and glibc.
+The image uses an Ubuntu 24.04 base that provides the filesystem layout, glibc, and `apt-get` — required by devcontainer features for package installation.
 
 ### Nix for everything
 
-All actual developer tools — bash, git, direnv, curl, jq, and language toolchains — are managed and installed via Nix through a single `flake.nix` with one `flake.lock`. No distribution packages are used beyond the Wolfi base.
+All actual developer tools — bash, git, direnv, curl, jq, and language toolchains — are managed and installed via Nix through a single `flake.nix` with one `flake.lock`. Ubuntu provides only the base filesystem; all developer tooling comes from Nix.
 
 ### Layered variants
 
@@ -22,7 +22,7 @@ Each language toolchain is a separate content-addressed layer on top of the shar
   ├─────────────────────────────────┤
   │  Nix tools · bash · git · direnv│  shared base
   ├─────────────────────────────────┤
-  │  Wolfi · FHS + glibc            │
+  │  Ubuntu · FHS + glibc + apt      │
   └─────────────────────────────────┘
 ```
 

@@ -1,5 +1,8 @@
 schemaVersion: "2.0.0"
 
+containerRunOptions:
+  user: "dev"
+
 commandTests:
   - name: "nix is available"
     command: "/nix/var/nix/profiles/default/bin/nix"

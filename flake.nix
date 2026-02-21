@@ -100,26 +100,33 @@
 
         # --- Nix profile symlink ---
         nixProfile = pkgs.runCommand "nix-profile" {} ''
-          mkdir -p $out/nix/var/nix/profiles
+          mkdir -p $out/nix/var/nix/profiles/per-user/dev
           mkdir -p $out/nix/var/nix/gcroots/profiles
+          mkdir -p $out/nix/var/nix/gcroots/per-user/dev
           ln -s ${userEnv} $out/nix/var/nix/profiles/default
+          # .keep ensures empty dirs survive nix2container tar layering —
+          # initializeNixDatabase adds a later layer with /nix/var/nix/profiles/
+          # but overlayfs merges per-user/dev from this lower layer
+          touch $out/nix/var/nix/profiles/per-user/dev/.keep
+          touch $out/nix/var/nix/gcroots/per-user/dev/.keep
         '';
 
-        # --- Wolfi base image (per-architecture digests) ---
-        wolfiDigests = {
+        # --- Ubuntu 24.04 (Noble) base image (per-architecture digests) ---
+        # Pinned by digest. security-check.yml queries ubuntu:noble for updates.
+        ubuntuDigests = {
           "x86_64-linux" = {
-            imageDigest = "sha256:a557cd88f9807c3632d2f7978f57b6dcab4ef2358b88aa7b0ae3d2706a44860e";
-            sha256 = "sha256-9Ly0cveprDBYb3//yl0zrtwuuF/l7cOUTz1QqNzYSC0=";
+            imageDigest = "sha256:98ff7968124952e719a8a69bb3cccdd217f5fe758108ac4f21ad22e1df44d237";
+            sha256 = "sha256-a4ae/IC2MPVOKrtXNN+32ZO2tvChfP/8wW4NkgeYhDg=";
           };
           "aarch64-linux" = {
-            imageDigest = "sha256:bd736af9ca3fa53ba61622dd50481bd8409e7e8ce57e59fd38e985b7673becde";
-            sha256 = "sha256-4rmr+BySon8J/4iLhuXmjXsjROKOSgkReRe2OQBN84Q=";
+            imageDigest = "sha256:68434214381cb38287104e629fe8ee720167dd98cbb36ab1cbbab342515fa6ab";
+            sha256 = "sha256-nAsZ8lnWoUu9hIO7vNb0C56JaHl8ayVREQWQFD8mzl4=";
           };
         };
 
-        wolfiBase = n2c.pullImage {
-          imageName = "cgr.dev/chainguard/wolfi-base";
-          inherit (wolfiDigests.${system}) imageDigest sha256;
+        ubuntuBase = n2c.pullImage {
+          imageName = "docker.io/library/ubuntu";
+          inherit (ubuntuDigests.${system}) imageDigest sha256;
         };
 
         # --- Shared layers (all variants include these) ---
@@ -161,12 +168,44 @@
         nixProfileLayer = n2c.buildLayer {
           copyToRoot = [ nixProfile ];
           metadata.created_by = "nix-aerie: nix profile (/nix/var/nix/profiles/default)";
+          perms = [
+            {
+              path = nixProfile;
+              regex = "nix/var/nix";
+              mode = "0755";
+              uid = 1000;
+              gid = 1000;
+            }
+          ];
         };
 
         # Layer: dotfiles (.bashrc, direnv config, nix.conf)
+        # deps ensures all Nix store paths referenced by Home Manager generated scripts
+        # (e.g. hm-session-vars.sh, bash-completion) exist in the image.
+        # Without deps, `bash -l` fails on missing store paths and VS Code's
+        # loginInteractiveShell probe breaks → terminal never opens.
         dotfilesLayer = n2c.buildLayer {
           copyToRoot = [ homeManagerDotfiles nixConf ];
+          deps = [ homeManagerDotfiles ];
+          layers = [ userPkgsLayer ];
           metadata.created_by = "nix-aerie: dotfiles (.bashrc, direnv, nix.conf)";
+          perms = [
+            {
+              path = homeManagerDotfiles;
+              regex = "home/dev";
+              mode = "0755";
+              uid = 1000;
+              gid = 1000;
+            }
+          ];
+        };
+
+        # Layer: nixpkgs source (pre-baked for flake evaluation)
+        # inputs.nixpkgs.outPath is the /nix/store/<hash>-source tree (~185 MiB).
+        # Without this, every `nix develop` downloads ~32 MiB from cache.nixos.org.
+        nixpkgsSourceLayer = n2c.buildLayer {
+          deps = [ nixpkgs.outPath ];
+          metadata.created_by = "nix-aerie: nixpkgs source (flake evaluation cache)";
         };
 
         baseLayers = [
@@ -174,6 +213,7 @@
           userPkgsLayer
           nixProfileLayer
           dotfilesLayer
+          nixpkgsSourceLayer
         ];
 
         # --- Shell-specific layers ---
@@ -218,7 +258,7 @@
         mkVariant = { name, extraLayers ? [] }:
           n2c.buildImage {
             inherit name;
-            fromImage = wolfiBase;
+            fromImage = ubuntuBase;
             layers = baseLayers ++ extraLayers;
             config = imageConfig;
             initializeNixDatabase = true;

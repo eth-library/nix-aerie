@@ -1,5 +1,8 @@
 schemaVersion: "2.0.0"
 
+containerRunOptions:
+  user: "dev"
+
 metadataTest:
   user: ""
   envVars:
@@ -85,7 +88,55 @@ fileContentTests:
       - "direnv hook bash"
 
 commandTests:
-  # Core tools
+  # --- VS Code Server requirements ---
+
+  - name: "glibc >= 2.28 (VS Code Server requirement)"
+    command: "bash"
+    args: ["-lc", "ldd --version 2>&1 | head -1"]
+    expectedOutput: ["GLIBC 2\\.(2[8-9]|[3-9][0-9])"]
+
+  - name: "libstdc++.so.6 exists (VS Code Server requirement)"
+    command: "bash"
+    args: ["-lc", "find /usr -name 'libstdc++.so.6' -type f 2>/dev/null | head -1 | xargs test -f && echo found"]
+    expectedOutput: ["found"]
+
+  - name: "libgcc_s.so.1 exists (VS Code Server requirement)"
+    command: "bash"
+    args: ["-lc", "find /usr /lib -name 'libgcc_s.so.1' \\( -type f -o -type l \\) 2>/dev/null | head -1 | xargs test -e && echo found"]
+    expectedOutput: ["found"]
+
+  - name: "/bin/bash exists (VS Code Server requirement)"
+    command: "/bin/bash"
+    args: ["--version"]
+    expectedOutput: ["bash"]
+
+  - name: "/bin/sh exists (overrideCommand requirement)"
+    command: "/bin/sh"
+    args: ["-c", "echo sh-ok"]
+    expectedOutput: ["sh-ok"]
+
+  - name: "sleep exists (overrideCommand keep-alive)"
+    command: "bash"
+    args: ["-lc", "which sleep"]
+    expectedOutput: ["/"]
+
+  - name: "ca-certificates present (SSL requirement)"
+    command: "bash"
+    args: ["-lc", "test -f /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt && echo found"]
+    expectedOutput: ["found"]
+
+  - name: "/home/dev is writable by dev (VS Code Server writes ~/.vscode-server)"
+    command: "bash"
+    args: ["-c", "touch /home/dev/.write-test && rm /home/dev/.write-test && echo writable"]
+    expectedOutput: ["writable"]
+
+  - name: "/tmp exists with mode 1777"
+    command: "stat"
+    args: ["-c", "%a", "/tmp"]
+    expectedOutput: ["1777"]
+
+  # --- Core tools ---
+
   - name: "nix is available"
     command: "/nix/var/nix/profiles/default/bin/nix"
     args: ["--version"]
@@ -155,6 +206,59 @@ commandTests:
     command: "/nix/var/nix/profiles/default/bin/ls"
     args: ["--version"]
     expectedOutput: ["coreutils"]
+
+  - name: "apt-get is available (Ubuntu base)"
+    command: "bash"
+    args: ["-lc", "apt-get --version"]
+    expectedOutput: ["apt"]
+
+  # --- Nix profile directories: ownership for single-user mode ---
+
+  - name: "/nix/var/nix/profiles/per-user/dev exists and is owned by dev"
+    command: "stat"
+    args: ["-c", "%U:%G", "/nix/var/nix/profiles/per-user/dev"]
+    expectedOutput: ["dev:dev"]
+
+  - name: "/nix/var/nix/gcroots/per-user/dev exists and is owned by dev"
+    command: "stat"
+    args: ["-c", "%U:%G", "/nix/var/nix/gcroots/per-user/dev"]
+    expectedOutput: ["dev:dev"]
+
+  # --- Home Manager dotfiles: ownership + store path resolution ---
+
+  - name: "/home/dev owned by dev user"
+    command: "stat"
+    args: ["-c", "%U:%G", "/home/dev"]
+    expectedOutput: ["dev:dev"]
+
+  - name: "/home/dev/.bashrc owned by dev user"
+    command: "stat"
+    args: ["-c", "%U:%G", "/home/dev/.bashrc"]
+    expectedOutput: ["dev:dev"]
+
+  - name: "/home/dev/.profile owned by dev user"
+    command: "stat"
+    args: ["-c", "%U:%G", "/home/dev/.profile"]
+    expectedOutput: ["dev:dev"]
+
+  - name: ".profile sources without missing store paths"
+    command: "bash"
+    args: ["-c", ". /home/dev/.profile 2>&1 && echo ok"]
+    expectedOutput: ["ok"]
+    excludedOutput: ["No such file"]
+
+  - name: "login shell works (VS Code Codespaces compatibility)"
+    command: "bash"
+    args: ["-l", "-c", "echo probe-ok"]
+    expectedOutput: ["probe-ok"]
+    excludedOutput: ["No such file or directory"]
+
+  # --- Pre-baked nixpkgs source (flake evaluation cache) ---
+
+  - name: "nixpkgs source is pre-baked in store"
+    command: "bash"
+    args: ["-lc", "ls -d /nix/store/*-source 2>/dev/null | xargs -I {} find {} -maxdepth 3 -path '*/pkgs/top-level/all-packages.nix' | grep -q . && echo found"]
+    expectedOutput: ["found"]
 
   # --- Pre-cached devShell tools (store-presence tests) ---
 
