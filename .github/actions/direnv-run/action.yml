@@ -1,0 +1,36 @@
+name: Run in direnv environment
+description: Run a command inside the repo's direnv environment (.envrc) using the nix-aerie image
+
+inputs:
+  command:
+    description: Command to run inside direnv exec
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Transfer Nix store ownership to root
+      # The image's /nix store is owned by user 'dev' (uid 1000)
+      # for devcontainer compatibility. GitHub Actions container jobs run as root.
+      # Without this chown, Nix operations fail with permission errors (EPERM).
+      # Security note: no privilege escalation — the CI runner is already root.
+      run: |
+        if [ ! -d /nix ]; then
+          echo "::error::/nix directory not found — is this a nix-aerie image?"
+          exit 1
+        fi
+        chown -R root:root /nix
+      shell: bash
+
+    - name: Run command in direnv environment
+      env:
+        COMMAND_INPUT: ${{ inputs.command }}
+      run: |
+        if [ ! -f .envrc ]; then
+          echo "::error::No .envrc found in workspace root — direnv-run requires an .envrc file. Use nix-run action instead for repos without .envrc."
+          exit 1
+        fi
+        direnv allow .
+        echo "Running: direnv exec . $COMMAND_INPUT"
+        direnv exec . $COMMAND_INPUT
+      shell: bash
