@@ -200,11 +200,20 @@
           ];
         };
 
+        # Layer: nixpkgs source (pre-baked for flake evaluation)
+        # inputs.nixpkgs.outPath is the /nix/store/<hash>-source tree (~185 MiB).
+        # Without this, every `nix develop` downloads ~32 MiB from cache.nixos.org.
+        nixpkgsSourceLayer = n2c.buildLayer {
+          deps = [ nixpkgs.outPath ];
+          metadata.created_by = "nix-aerie: nixpkgs source (flake evaluation cache)";
+        };
+
         baseLayers = [
           systemLayer
           userPkgsLayer
           nixProfileLayer
           dotfilesLayer
+          nixpkgsSourceLayer
         ];
 
         # --- Shell-specific layers ---

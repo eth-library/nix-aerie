@@ -253,6 +253,13 @@ commandTests:
     expectedOutput: ["probe-ok"]
     excludedOutput: ["No such file or directory"]
 
+  # --- Pre-baked nixpkgs source (flake evaluation cache) ---
+
+  - name: "nixpkgs source is pre-baked in store"
+    command: "bash"
+    args: ["-lc", "ls -d /nix/store/*-source 2>/dev/null | xargs -I {} find {} -maxdepth 3 -path '*/pkgs/top-level/all-packages.nix' | grep -q . && echo found"]
+    expectedOutput: ["found"]
+
   # --- Pre-cached devShell tools (store-presence tests) ---
 
   - name: "python3 is pre-cached in store"
