@@ -45,6 +45,12 @@
           cp -rLT ${homeManagerConfig.activationPackage}/home-files $out/home/dev/
         '';
 
+        # System-level git config: allow any directory (safe in containers)
+        gitConfig = pkgs.writeTextDir "etc/gitconfig" ''
+          [safe]
+          	directory = *
+        '';
+
         # System-level nix.conf (not managed by Home Manager — it's a system path)
         nixConf = pkgs.writeTextDir "etc/nix/nix.conf" ''
           build-users-group =
@@ -185,7 +191,7 @@
         # Without deps, `bash -l` fails on missing store paths and VS Code's
         # loginInteractiveShell probe breaks → terminal never opens.
         dotfilesLayer = n2c.buildLayer {
-          copyToRoot = [ homeManagerDotfiles nixConf ];
+          copyToRoot = [ homeManagerDotfiles nixConf gitConfig ];
           deps = [ homeManagerDotfiles ];
           layers = [ userPkgsLayer ];
           metadata.created_by = "nix-aerie: dotfiles (.bashrc, direnv, nix.conf)";

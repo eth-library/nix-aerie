@@ -66,6 +66,12 @@ commandTests:
     args: ["-lc", "test -f $SSL_CERT_FILE"]
     exitCode: 0
 
+  # CI compatibility: git safe.directory allows any directory
+  - name: "git safe.directory allows any directory"
+    command: "bash"
+    args: ["-lc", "cd /tmp && git init test-safe && cd test-safe && git status"]
+    expectedOutput: ["On branch"]
+
   # Negative: no shell-specific tools
   - name: "base does NOT contain python3"
     command: "bash"

@@ -56,6 +56,11 @@ fileExistenceTests:
     path: /etc/group
     shouldExist: true
 
+  # /etc/gitconfig (CI compatibility: git safe.directory)
+  - name: "gitconfig exists"
+    path: /etc/gitconfig
+    shouldExist: true
+
 fileContentTests:
   # nix.conf content
   - name: "nix.conf has required settings"
@@ -76,6 +81,12 @@ fileContentTests:
     path: /etc/group
     expectedContents:
       - "dev:x:1000:"
+
+  # gitconfig content
+  - name: "gitconfig has safe.directory wildcard"
+    path: /etc/gitconfig
+    expectedContents:
+      - "directory = *"
 
   # Bashrc sources Nix profile
   - name: "bashrc sources nix profile"
@@ -267,6 +278,12 @@ commandTests:
     command: "bash"
     args: ["-lc", "test -f $SSL_CERT_FILE"]
     exitCode: 0
+
+  # git safe.directory works (no ownership complaint)
+  - name: "git safe.directory allows any directory"
+    command: "bash"
+    args: ["-lc", "cd /tmp && git init test-safe && cd test-safe && git status"]
+    expectedOutput: ["On branch"]
 
   # --- Pre-cached devShell tools (store-presence tests) ---
 
