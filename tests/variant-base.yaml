@@ -60,6 +60,12 @@ commandTests:
     expectedOutput: ["probe-ok"]
     excludedOutput: ["No such file or directory"]
 
+  # CI compatibility: SSL_CERT_FILE resolves to real cert bundle
+  - name: "SSL_CERT_FILE points to existing cert bundle"
+    command: "bash"
+    args: ["-lc", "test -f $SSL_CERT_FILE"]
+    exitCode: 0
+
   # Negative: no shell-specific tools
   - name: "base does NOT contain python3"
     command: "bash"

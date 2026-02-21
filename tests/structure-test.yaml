@@ -10,6 +10,8 @@ metadataTest:
       value: /home/dev
     - key: NIX_PROFILES
       value: /nix/var/nix/profiles/default
+    - key: SSL_CERT_FILE
+      value: /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
     - key: PATH
       value: /nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   workdir: /workspaces
@@ -259,6 +261,12 @@ commandTests:
     command: "bash"
     args: ["-lc", "ls -d /nix/store/*-source 2>/dev/null | xargs -I {} find {} -maxdepth 3 -path '*/pkgs/top-level/all-packages.nix' | grep -q . && echo found"]
     expectedOutput: ["found"]
+
+  # SSL_CERT_FILE points to a real file
+  - name: "SSL_CERT_FILE points to existing cert bundle"
+    command: "bash"
+    args: ["-lc", "test -f $SSL_CERT_FILE"]
+    exitCode: 0
 
   # --- Pre-cached devShell tools (store-presence tests) ---
 

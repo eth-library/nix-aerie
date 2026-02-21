@@ -240,6 +240,7 @@
             "NIX_PROFILES=/nix/var/nix/profiles/default"
             "HOME=/home/dev"
             "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
+            "SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
             "USER=dev"
             "LANG=C.UTF-8"
           ];
