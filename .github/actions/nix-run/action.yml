@@ -24,6 +24,10 @@ runs:
           exit 1
         fi
         chown -R root:root /nix
+        # GitHub Actions sets HOME=/github/home for container jobs, but root's
+        # passwd entry points to /root. This mismatch causes Nix warnings and
+        # breaks store operations. Reset HOME to match the running user.
+        echo "HOME=/root" >> "$GITHUB_ENV"
       shell: bash
 
     - name: Run command in Nix devShell
