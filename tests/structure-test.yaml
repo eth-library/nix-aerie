@@ -125,6 +125,11 @@ commandTests:
     args: ["-lc", "test -f /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt && echo found"]
     expectedOutput: ["found"]
 
+  - name: "/home/dev is writable by dev (VS Code Server writes ~/.vscode-server)"
+    command: "bash"
+    args: ["-c", "touch /home/dev/.write-test && rm /home/dev/.write-test && echo writable"]
+    expectedOutput: ["writable"]
+
   # --- Core tools ---
 
   - name: "nix is available"
