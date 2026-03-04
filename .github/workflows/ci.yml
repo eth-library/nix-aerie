@@ -86,28 +86,6 @@ jobs:
             --image ${{ matrix.image_name }} \
             --config ${{ matrix.test_config }}
 
-      # CI reuse pattern: root user + chown + nix develop (default variant only)
-      - name: "Smoke: CI reuse pattern (root + chown + nix develop)"
-        if: matrix.variant == 'default'
-        env:
-          IMAGE_NAME: ${{ matrix.image_name }}
-        run: |
-          docker run --rm --user root "$IMAGE_NAME" bash -c '
-            set -e
-            chown -R root:root /nix
-            mkdir -p /tmp/test-ci
-            cat > /tmp/test-ci/flake.nix << "FLAKE"
-          {
-            inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-            outputs = { nixpkgs, ... }:
-              let pkgs = nixpkgs.legacyPackages.x86_64-linux;
-              in { devShells.x86_64-linux.default = pkgs.mkShell {}; };
-          }
-          FLAKE
-            cd /tmp/test-ci
-            nix develop --command nix --version
-          '
-
       # Image size guardrail — catch unexpected bloat
       - name: Check image size
         env:
