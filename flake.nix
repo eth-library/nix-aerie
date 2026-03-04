@@ -28,10 +28,17 @@
         lib = pkgs.lib;
 
         # --- Shell definitions (plain Nix functions, not flakes) ---
-        pythonShell = import ./shells/python.nix { inherit pkgs; };
-        goShell = import ./shells/go.nix { inherit pkgs; };
-        javaShell = import ./shells/java.nix { inherit pkgs; };
-        k8sShell = import ./shells/k8s.nix { inherit pkgs; };
+        # Each returns { packages, shell } — packages for buildEnv (PATH),
+        # shell for devShells export and layer closure.
+        pythonDef = import ./shells/python.nix { inherit pkgs; };
+        goDef     = import ./shells/go.nix { inherit pkgs; };
+        javaDef   = import ./shells/java.nix { inherit pkgs; };
+        k8sDef    = import ./shells/k8s.nix { inherit pkgs; };
+
+        pythonShell = pythonDef.shell;    pythonPackages = pythonDef.packages;
+        goShell     = goDef.shell;        goPackages     = goDef.packages;
+        javaShell   = javaDef.shell;      javaPackages   = javaDef.packages;
+        k8sShell    = k8sDef.shell;       k8sPackages    = k8sDef.packages;
 
         # --- Home Manager configuration ---
         homeManagerConfig = home-manager.lib.homeManagerConfiguration {
@@ -115,6 +122,20 @@
           # but overlayfs merges per-user/dev from this lower layer
           touch $out/nix/var/nix/profiles/per-user/dev/.keep
           touch $out/nix/var/nix/gcroots/per-user/dev/.keep
+        '';
+
+        # --- Variant profile (language tools on PATH) ---
+        # Per-variant buildEnv + profile symlink at /nix/var/nix/profiles/variant.
+        # Same mechanism as base packages (userEnv + nixProfile) but for language tools.
+        mkVariantEnv = name: packages: pkgs.buildEnv {
+          name = "${name}-env";
+          paths = packages;
+          pathsToLink = [ "/bin" "/lib" "/share" ];
+        };
+
+        mkVariantProfile = variantEnv: pkgs.runCommand "variant-profile" {} ''
+          mkdir -p $out/nix/var/nix/profiles
+          ln -s ${variantEnv} $out/nix/var/nix/profiles/variant
         '';
 
         # --- Ubuntu 24.04 (Noble) base image (per-architecture digests) ---
@@ -239,10 +260,32 @@
         javaLayer   = n2c.buildLayer { deps = [ javaShell ];   layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: java devShell (jdk25, maven)"; };
         k8sLayer    = n2c.buildLayer { deps = [ k8sShell ];    layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: k8s devShell (kubectl, helm)"; };
 
+        # Variant profile layers: buildEnv symlink trees that put language tools on PATH.
+        # deps carries the buildEnv (symlinks); copyToRoot places the profile pointer.
+        # Deduplicates against userPkgsLayer + the language store layer.
+        pythonEnv = mkVariantEnv "python" pythonPackages;
+        goEnv     = mkVariantEnv "go"     goPackages;
+        javaEnv   = mkVariantEnv "java"   javaPackages;
+        k8sEnv    = mkVariantEnv "k8s"    k8sPackages;
+        allEnv    = mkVariantEnv "all"    (pythonPackages ++ goPackages ++ javaPackages ++ k8sPackages);
+
+        mkVariantProfileLayer = { env, dedupLayers }: n2c.buildLayer {
+          deps = [ env ];
+          copyToRoot = [ (mkVariantProfile env) ];
+          layers = [ userPkgsLayer ] ++ dedupLayers;
+          metadata.created_by = "nix-aerie: variant profile (/nix/var/nix/profiles/variant)";
+        };
+
+        pythonProfileLayer = mkVariantProfileLayer { env = pythonEnv; dedupLayers = [ pythonLayer ]; };
+        goProfileLayer     = mkVariantProfileLayer { env = goEnv;     dedupLayers = [ goLayer ]; };
+        javaProfileLayer   = mkVariantProfileLayer { env = javaEnv;   dedupLayers = [ javaLayer ]; };
+        k8sProfileLayer    = mkVariantProfileLayer { env = k8sEnv;    dedupLayers = [ k8sLayer ]; };
+        allProfileLayer    = mkVariantProfileLayer { env = allEnv;    dedupLayers = [ allShellsLayer ]; };
+
         # --- Image configuration ---
         imageConfig = {
           Env = [
-            "PATH=/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            "PATH=/nix/var/nix/profiles/variant/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             "NIX_PROFILES=/nix/var/nix/profiles/default"
             "HOME=/home/dev"
             "NIX_SSL_CERT_FILE=/nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt"
@@ -287,12 +330,12 @@
       in {
         packages = let
           images = {
-            default = mkVariant { name = "nix-aerie"; extraLayers = [ allShellsLayer ]; };
+            default = mkVariant { name = "nix-aerie"; extraLayers = [ allShellsLayer allProfileLayer ]; };
             base    = mkVariant { name = "nix-aerie-base"; };
-            python  = mkVariant { name = "nix-aerie-python"; extraLayers = [ pythonLayer ]; };
-            go      = mkVariant { name = "nix-aerie-go"; extraLayers = [ goLayer ]; };
-            java    = mkVariant { name = "nix-aerie-java"; extraLayers = [ javaLayer ]; };
-            k8s     = mkVariant { name = "nix-aerie-k8s"; extraLayers = [ k8sLayer ]; };
+            python  = mkVariant { name = "nix-aerie-python"; extraLayers = [ pythonLayer pythonProfileLayer ]; };
+            go      = mkVariant { name = "nix-aerie-go";     extraLayers = [ goLayer goProfileLayer ]; };
+            java    = mkVariant { name = "nix-aerie-java";    extraLayers = [ javaLayer javaProfileLayer ]; };
+            k8s     = mkVariant { name = "nix-aerie-k8s";     extraLayers = [ k8sLayer k8sProfileLayer ]; };
           };
         in images // {
           # Docker-archive tars (for `docker load < result`)
