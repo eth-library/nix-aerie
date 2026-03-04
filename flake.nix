@@ -239,7 +239,7 @@
         javaLayer   = n2c.buildLayer { deps = [ javaShell ];   layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: java devShell (jdk25, maven)"; };
         k8sLayer    = n2c.buildLayer { deps = [ k8sShell ];    layers = [ userPkgsLayer ]; metadata.created_by = "nix-aerie: k8s devShell (kubectl, helm)"; };
 
-        # --- Image configuration (no User!) ---
+        # --- Image configuration ---
         imageConfig = {
           Env = [
             "PATH=/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
@@ -250,6 +250,7 @@
             "USER=dev"
             "LANG=C.UTF-8"
           ];
+          User = "dev";
           WorkingDir = "/workspaces";
           Cmd = [ "/nix/var/nix/profiles/default/bin/bash" "-l" ];
           Labels = {

@@ -4,7 +4,7 @@ containerRunOptions:
   user: "dev"
 
 metadataTest:
-  user: ""
+  user: "dev"
   envVars:
     - key: HOME
       value: /home/dev
