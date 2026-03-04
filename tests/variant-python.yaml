@@ -9,14 +9,24 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["nix \\(Nix\\)"]
 
-  - name: "python3 is present in store"
+  - name: "python is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/python3' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    args: ["-lc", "which python"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/python"]
+
+  - name: "python runs"
+    command: "bash"
+    args: ["-lc", "python --version"]
     expectedOutput: ["Python 3"]
 
-  - name: "uv is present in store"
+  - name: "uv is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/uv' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    args: ["-lc", "which uv"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/uv"]
+
+  - name: "uv runs"
+    command: "bash"
+    args: ["-lc", "uv --version"]
     expectedOutput: ["uv"]
 
   # Negative: no other shell tools

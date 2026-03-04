@@ -13,7 +13,7 @@ metadataTest:
     - key: SSL_CERT_FILE
       value: /nix/var/nix/profiles/default/etc/ssl/certs/ca-bundle.crt
     - key: PATH
-      value: /nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      value: /nix/var/nix/profiles/variant/bin:/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   workdir: /workspaces
   cmd:
     - "/nix/var/nix/profiles/default/bin/bash"
@@ -331,6 +331,53 @@ commandTests:
     command: "bash"
     args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/helm' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
     expectedOutput: ["Version:"]
+
+  # --- Language tools on PATH (variant profile) ---
+
+  - name: "python is on PATH"
+    command: "bash"
+    args: ["-lc", "which python"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/python"]
+
+  - name: "uv is on PATH"
+    command: "bash"
+    args: ["-lc", "which uv"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/uv"]
+
+  - name: "go is on PATH"
+    command: "bash"
+    args: ["-lc", "which go"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/go"]
+
+  - name: "gopls is on PATH"
+    command: "bash"
+    args: ["-lc", "which gopls"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/gopls"]
+
+  - name: "golangci-lint is on PATH"
+    command: "bash"
+    args: ["-lc", "which golangci-lint"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/golangci-lint"]
+
+  - name: "java is on PATH"
+    command: "bash"
+    args: ["-lc", "which java"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/java"]
+
+  - name: "mvn is on PATH"
+    command: "bash"
+    args: ["-lc", "which mvn"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/mvn"]
+
+  - name: "kubectl is on PATH"
+    command: "bash"
+    args: ["-lc", "which kubectl"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/kubectl"]
+
+  - name: "helm is on PATH"
+    command: "bash"
+    args: ["-lc", "which helm"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/helm"]
 
   # --- nix develop smoke tests (creates temp flake, verifies shell activation) ---
 
