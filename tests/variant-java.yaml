@@ -9,14 +9,24 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["nix \\(Nix\\)"]
 
-  - name: "java is present in store"
+  - name: "java is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -name java -path '*/bin/java' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    args: ["-lc", "which java"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/java"]
+
+  - name: "java runs"
+    command: "bash"
+    args: ["-lc", "java --version"]
     expectedOutput: ["openjdk"]
 
-  - name: "maven is present in store"
+  - name: "mvn is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/mvn' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    args: ["-lc", "which mvn"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/mvn"]
+
+  - name: "mvn runs"
+    command: "bash"
+    args: ["-lc", "mvn --version"]
     expectedOutput: ["Apache Maven"]
 
   # Negative: no other shell tools

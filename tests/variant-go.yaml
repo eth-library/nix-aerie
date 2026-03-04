@@ -9,19 +9,34 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["nix \\(Nix\\)"]
 
-  - name: "go is present in store"
+  - name: "go is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/go' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    args: ["-lc", "which go"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/go"]
+
+  - name: "go runs"
+    command: "bash"
+    args: ["-lc", "go version"]
     expectedOutput: ["go1\\."]
 
-  - name: "gopls is present in store"
+  - name: "gopls is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/gopls' \\( -type f -o -type l \\) 2>/dev/null | head -1) version"]
+    args: ["-lc", "which gopls"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/gopls"]
+
+  - name: "gopls runs"
+    command: "bash"
+    args: ["-lc", "gopls version"]
     expectedOutput: ["golang.org/x/tools/gopls"]
 
-  - name: "golangci-lint is present in store"
+  - name: "golangci-lint is on PATH"
     command: "bash"
-    args: ["-lc", "$(find /nix/store -maxdepth 3 -path '*/bin/golangci-lint' \\( -type f -o -type l \\) 2>/dev/null | head -1) --version"]
+    args: ["-lc", "which golangci-lint"]
+    expectedOutput: ["/nix/var/nix/profiles/variant/bin/golangci-lint"]
+
+  - name: "golangci-lint runs"
+    command: "bash"
+    args: ["-lc", "golangci-lint --version"]
     expectedOutput: ["golangci-lint"]
 
   # Negative: no other shell tools
