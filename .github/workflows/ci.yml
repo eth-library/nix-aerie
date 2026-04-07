@@ -31,6 +31,9 @@ jobs:
     name: Build and test (${{ matrix.variant.name }}, ${{ matrix.arch.docker_arch }})
     needs: check
     runs-on: ${{ matrix.arch.runner }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -49,14 +52,17 @@ jobs:
         variant:
           - name: base
             image_name: nix-aerie-base:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-base
             test_config: tests/variant-base.yaml
             size_max_mb: 1200
           - name: python
             image_name: nix-aerie-python:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-python
             test_config: tests/variant-python.yaml
             size_max_mb: 1800
           - name: default
             image_name: nix-aerie:latest
+            registry_image: ghcr.io/eth-library/nix-aerie
             test_config: tests/structure-test.yaml
             size_max_mb: 3600
 
@@ -110,6 +116,21 @@ jobs:
             exit 1
           fi
           echo "OK: :${VARIANT} is $(numfmt --to=iec "$ACTUAL") (max $(numfmt --to=iec "$MAX_BYTES"))"
+
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag "${{ matrix.variant.image_name }}" \
+            "${{ matrix.variant.registry_image }}:latest-${{ matrix.arch.docker_arch }}"
+          docker push "${{ matrix.variant.registry_image }}:latest-${{ matrix.arch.docker_arch }}"
 
   publish:
     name: Publish (${{ matrix.variant }})
