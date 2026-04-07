@@ -28,23 +28,34 @@ jobs:
         run: nix flake check --system x86_64-linux
 
   build-test:
-    name: Build and test (${{ matrix.variant }})
+    name: Build and test (${{ matrix.variant.name }}, ${{ matrix.arch.docker_arch }})
     needs: check
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.arch.runner }}
     strategy:
       fail-fast: false
       matrix:
+        arch:
+          - runner: ubuntu-24.04
+            nix_system: x86_64-linux
+            docker_arch: amd64
+            cst_binary: container-structure-test-linux-amd64
+            cst_sha256: "fa35e89512a8978585f76cf41397956d2e3a30c62c2ad3fb857b1597074d14ca"
+          - runner: ubuntu-24.04-arm
+            nix_system: aarch64-linux
+            docker_arch: arm64
+            cst_binary: container-structure-test-linux-arm64
+            cst_sha256: "801266c0de0b6adc0e231f0815f00f4f32eb2e0cfa1fcfc6e9c63806c09a6e26"
         # MVP variants only — go, java, k8s deferred to post-MVP
-        include:
-          - variant: base
+        variant:
+          - name: base
             image_name: nix-aerie-base:latest
             test_config: tests/variant-base.yaml
             size_max_mb: 1200
-          - variant: python
+          - name: python
             image_name: nix-aerie-python:latest
             test_config: tests/variant-python.yaml
             size_max_mb: 1800
-          - variant: default
+          - name: default
             image_name: nix-aerie:latest
             test_config: tests/structure-test.yaml
             size_max_mb: 3600
@@ -62,36 +73,35 @@ jobs:
           use-flakehub: false
 
       # Uses -tar targets for consistent :latest tags (see .reports/ci-workflow-review.md §5)
+      # Full attribute path required — shorthand only works when host == target system
       - name: Build and load image
         run: |
-          nix build .#${{ matrix.variant }}-tar --print-build-logs
+          nix build .#packages.${{ matrix.arch.nix_system }}.${{ matrix.variant.name }}-tar --print-build-logs
           docker load < result
 
       # Install container-structure-test (v1.22.1, SHA256 verified)
       - name: Install container-structure-test
         run: |
           CST_VERSION="1.22.1"
-          # SHA256 from dev/flake.nix SRI hash, converted to hex
-          CST_SHA256="fa35e89512a8978585f76cf41397956d2e3a30c62c2ad3fb857b1597074d14ca"
           curl -fsSL \
-            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v${CST_VERSION}/container-structure-test-linux-amd64" \
+            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v${CST_VERSION}/${{ matrix.arch.cst_binary }}" \
             -o /usr/local/bin/container-structure-test
-          echo "${CST_SHA256}  /usr/local/bin/container-structure-test" | sha256sum -c
+          echo "${{ matrix.arch.cst_sha256 }}  /usr/local/bin/container-structure-test" | sha256sum -c
           chmod +x /usr/local/bin/container-structure-test
 
       # Each variant runs its own structure test file
       - name: Run structure tests
         run: |
           container-structure-test test \
-            --image ${{ matrix.image_name }} \
-            --config ${{ matrix.test_config }}
+            --image ${{ matrix.variant.image_name }} \
+            --config ${{ matrix.variant.test_config }}
 
       # Image size guardrail — catch unexpected bloat
       - name: Check image size
         env:
-          IMAGE_NAME: ${{ matrix.image_name }}
-          MAX_MB: ${{ matrix.size_max_mb }}
-          VARIANT: ${{ matrix.variant }}
+          IMAGE_NAME: ${{ matrix.variant.image_name }}
+          MAX_MB: ${{ matrix.variant.size_max_mb }}
+          VARIANT: ${{ matrix.variant.name }}
         run: |
           MAX_BYTES=$(( MAX_MB * 1024 * 1024 ))
           ACTUAL=$(docker inspect --format='{{.Size}}' "$IMAGE_NAME")
