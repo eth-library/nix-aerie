@@ -5,6 +5,10 @@ on:
   push:
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -28,24 +32,41 @@ jobs:
         run: nix flake check --system x86_64-linux
 
   build-test:
-    name: Build and test (${{ matrix.variant }})
+    name: Build and test (${{ matrix.variant.name }}, ${{ matrix.arch.docker_arch }})
     needs: check
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.arch.runner }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
+        arch:
+          - runner: ubuntu-24.04
+            nix_system: x86_64-linux
+            docker_arch: amd64
+            cst_binary: container-structure-test-linux-amd64
+            cst_sha256: "fa35e89512a8978585f76cf41397956d2e3a30c62c2ad3fb857b1597074d14ca"
+          - runner: ubuntu-24.04-arm
+            nix_system: aarch64-linux
+            docker_arch: arm64
+            cst_binary: container-structure-test-linux-arm64
+            cst_sha256: "801826ed107222120eb6df8c143b7de752cfebbe3aebfeea576e7098486917c2"
         # MVP variants only — go, java, k8s deferred to post-MVP
-        include:
-          - variant: base
+        variant:
+          - name: base
             image_name: nix-aerie-base:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-base
             test_config: tests/variant-base.yaml
             size_max_mb: 1200
-          - variant: python
+          - name: python
             image_name: nix-aerie-python:latest
+            registry_image: ghcr.io/eth-library/nix-aerie-python
             test_config: tests/variant-python.yaml
             size_max_mb: 1800
-          - variant: default
+          - name: default
             image_name: nix-aerie:latest
+            registry_image: ghcr.io/eth-library/nix-aerie
             test_config: tests/structure-test.yaml
             size_max_mb: 3600
 
@@ -62,36 +83,35 @@ jobs:
           use-flakehub: false
 
       # Uses -tar targets for consistent :latest tags (see .reports/ci-workflow-review.md §5)
+      # Full attribute path required — shorthand only works when host == target system
       - name: Build and load image
         run: |
-          nix build .#${{ matrix.variant }}-tar --print-build-logs
+          nix build .#packages.${{ matrix.arch.nix_system }}.${{ matrix.variant.name }}-tar --print-build-logs
           docker load < result
 
       # Install container-structure-test (v1.22.1, SHA256 verified)
       - name: Install container-structure-test
         run: |
           CST_VERSION="1.22.1"
-          # SHA256 from dev/flake.nix SRI hash, converted to hex
-          CST_SHA256="fa35e89512a8978585f76cf41397956d2e3a30c62c2ad3fb857b1597074d14ca"
           curl -fsSL \
-            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v${CST_VERSION}/container-structure-test-linux-amd64" \
+            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v${CST_VERSION}/${{ matrix.arch.cst_binary }}" \
             -o /usr/local/bin/container-structure-test
-          echo "${CST_SHA256}  /usr/local/bin/container-structure-test" | sha256sum -c
+          echo "${{ matrix.arch.cst_sha256 }}  /usr/local/bin/container-structure-test" | sha256sum -c
           chmod +x /usr/local/bin/container-structure-test
 
       # Each variant runs its own structure test file
       - name: Run structure tests
         run: |
           container-structure-test test \
-            --image ${{ matrix.image_name }} \
-            --config ${{ matrix.test_config }}
+            --image ${{ matrix.variant.image_name }} \
+            --config ${{ matrix.variant.test_config }}
 
       # Image size guardrail — catch unexpected bloat
       - name: Check image size
         env:
-          IMAGE_NAME: ${{ matrix.image_name }}
-          MAX_MB: ${{ matrix.size_max_mb }}
-          VARIANT: ${{ matrix.variant }}
+          IMAGE_NAME: ${{ matrix.variant.image_name }}
+          MAX_MB: ${{ matrix.variant.size_max_mb }}
+          VARIANT: ${{ matrix.variant.name }}
         run: |
           MAX_BYTES=$(( MAX_MB * 1024 * 1024 ))
           ACTUAL=$(docker inspect --format='{{.Size}}' "$IMAGE_NAME")
@@ -101,9 +121,25 @@ jobs:
           fi
           echo "OK: :${VARIANT} is $(numfmt --to=iec "$ACTUAL") (max $(numfmt --to=iec "$MAX_BYTES"))"
 
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag "${{ matrix.variant.image_name }}" \
+            "${{ matrix.variant.registry_image }}:latest-${{ matrix.arch.docker_arch }}"
+          docker push "${{ matrix.variant.registry_image }}:latest-${{ matrix.arch.docker_arch }}"
+
   publish:
-    name: Publish (${{ matrix.variant }})
+    name: Publish manifest (${{ matrix.variant.name }})
     needs: build-test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -111,29 +147,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - variant: base
-            image_name: nix-aerie-base:latest
+        variant:
+          - name: base
             registry_image: ghcr.io/eth-library/nix-aerie-base
-          - variant: python
-            image_name: nix-aerie-python:latest
+          - name: python
             registry_image: ghcr.io/eth-library/nix-aerie-python
-          - variant: default
-            image_name: nix-aerie:latest
+          - name: default
             registry_image: ghcr.io/eth-library/nix-aerie
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
-        with:
-          use-flakehub: false
-
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -141,16 +163,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Rebuild uses Nix cache — only docker load + push cost time
-      - name: Build and load image
+      - name: Create and push multi-arch manifest
         run: |
-          nix build .#${{ matrix.variant }}-tar --print-build-logs
-          docker load < result
-
-      - name: Tag and push
-        env:
-          LOCAL: ${{ matrix.image_name }}
-          REMOTE: ${{ matrix.registry_image }}
-        run: |
-          docker tag "${LOCAL}" "${REMOTE}:latest"
-          docker push "${REMOTE}:latest"
+          docker manifest create ${{ matrix.variant.registry_image }}:latest \
+            --amend ${{ matrix.variant.registry_image }}:latest-amd64 \
+            --amend ${{ matrix.variant.registry_image }}:latest-arm64
+          docker manifest push ${{ matrix.variant.registry_image }}:latest

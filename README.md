@@ -123,7 +123,7 @@ The nixpkgs source tree (~32 MB compressed) is also included in the Nix store, s
 - **Single-user Nix**, the container standard; no daemon or systemd required.
 - **`USER=dev`** in the image, ready for devcontainers and `docker run` out of the box.
 - **One `flake.lock`** pins all shells to the same nixpkgs revision, guaranteeing store-path deduplication across variants.
-- **Architecture**: `linux/amd64` for Codespaces; `linux/arm64` available in `flake.nix` for local testing on Apple Silicon.
+- **Architecture**: Multi-arch (`linux/amd64` + `linux/arm64`) published as OCI manifests — `docker pull` selects the native image automatically, including on Apple Silicon.
 
 ## License
 
