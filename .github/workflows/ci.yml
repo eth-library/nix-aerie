@@ -47,7 +47,7 @@ jobs:
             nix_system: aarch64-linux
             docker_arch: arm64
             cst_binary: container-structure-test-linux-arm64
-            cst_sha256: "801266c0de0b6adc0e231f0815f00f4f32eb2e0cfa1fcfc6e9c63806c09a6e26"
+            cst_sha256: "801826ed107222120eb6df8c143b7de752cfebbe3aebfeea576e7098486917c2"
         # MVP variants only — go, java, k8s deferred to post-MVP
         variant:
           - name: base
