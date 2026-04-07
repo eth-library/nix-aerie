@@ -133,8 +133,9 @@ jobs:
           docker push "${{ matrix.variant.registry_image }}:latest-${{ matrix.arch.docker_arch }}"
 
   publish:
-    name: Publish (${{ matrix.variant }})
+    name: Publish manifest (${{ matrix.variant.name }})
     needs: build-test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -142,29 +143,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - variant: base
-            image_name: nix-aerie-base:latest
+        variant:
+          - name: base
             registry_image: ghcr.io/eth-library/nix-aerie-base
-          - variant: python
-            image_name: nix-aerie-python:latest
+          - name: python
             registry_image: ghcr.io/eth-library/nix-aerie-python
-          - variant: default
-            image_name: nix-aerie:latest
+          - name: default
             registry_image: ghcr.io/eth-library/nix-aerie
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Enable Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
-        with:
-          use-flakehub: false
-
       - name: Log in to GHCR
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -172,16 +159,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Rebuild uses Nix cache — only docker load + push cost time
-      - name: Build and load image
+      - name: Create and push multi-arch manifest
         run: |
-          nix build .#${{ matrix.variant }}-tar --print-build-logs
-          docker load < result
-
-      - name: Tag and push
-        env:
-          LOCAL: ${{ matrix.image_name }}
-          REMOTE: ${{ matrix.registry_image }}
-        run: |
-          docker tag "${LOCAL}" "${REMOTE}:latest"
-          docker push "${REMOTE}:latest"
+          docker manifest create ${{ matrix.variant.registry_image }}:latest \
+            --amend ${{ matrix.variant.registry_image }}:latest-amd64 \
+            --amend ${{ matrix.variant.registry_image }}:latest-arm64
+          docker manifest push ${{ matrix.variant.registry_image }}:latest
