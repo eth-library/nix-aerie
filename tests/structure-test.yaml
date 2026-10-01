@@ -388,7 +388,7 @@ commandTests:
       - |
         set -e
         mkdir -p /tmp/test-py
-        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.python3 ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-py/flake.nix
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.python3 ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-py/flake.nix
         cd /tmp/test-py
         nix develop --command python3 --version
     expectedOutput: ["Python 3"]
@@ -400,7 +400,7 @@ commandTests:
       - |
         set -e
         mkdir -p /tmp/test-go
-        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.go ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-go/flake.nix
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.go ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-go/flake.nix
         cd /tmp/test-go
         nix develop --command go version
     expectedOutput: ["go1\\."]
@@ -412,7 +412,7 @@ commandTests:
       - |
         set -e
         mkdir -p /tmp/test-java
-        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.jdk25_headless ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-java/flake.nix
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.jdk25_headless ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-java/flake.nix
         cd /tmp/test-java
         nix develop --command java --version
     expectedOutput: ["openjdk"]
@@ -424,7 +424,7 @@ commandTests:
       - |
         set -e
         mkdir -p /tmp/test-k8s
-        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.kubectl ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-k8s/flake.nix
+        printf '{\n  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";\n  outputs = { nixpkgs, ... }:\n    let pkgs = nixpkgs.legacyPackages.%s-linux;\n    in { devShells.%s-linux.default = pkgs.mkShell { packages = [ pkgs.kubectl ]; }; };\n}\n' "$(uname -m)" "$(uname -m)" > /tmp/test-k8s/flake.nix
         cd /tmp/test-k8s
         nix develop --command kubectl version --client
     expectedOutput: ["Client Version"]
