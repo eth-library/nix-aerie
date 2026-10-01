@@ -2,7 +2,7 @@
   description = "nix-aerie: Pre-baked OCI images with Nix + direnv by ETH Library Zurich";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     nix2container = {
       url = "github:nlewo/nix2container/bb6801be998ba857a62c002cb77ece66b0a57298";
@@ -12,7 +12,7 @@
     flake-utils.url = "github:numtide/flake-utils/11707dc2f618dd54ca8739b309ec4fc024de578b";
 
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.11";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
