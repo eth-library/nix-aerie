@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     nix2container = {
-      url = "github:nlewo/nix2container/bb6801be998ba857a62c002cb77ece66b0a57298";
+      url = "github:nlewo/nix2container";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
